@@ -1,15 +1,17 @@
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 
+#include <Bounce2.h>
+
 #include <Homey.h>
 
 //connect one end of the doorbell push button lead to D2,
 //connect a 100K resistor from D2 to positive 3V3,
 //connect the other end of the doorbell push button lead to ground.
-int THEBUTTON = 4; 
 
-void onoffCb() { // this routine is called for _onoff
-}
+int THEBUTTON = 4; 
+int ledState = LOW;
+Bounce debouncer = Bounce(); // Instantiate a Bounce object
 
 // the setup function runs once when you press reset or power the board
 void setup() {
@@ -32,29 +34,31 @@ void setup() {
   Serial.println("Homey.begin()");
   Homey.setClass("socket"); // this is the classtype. The doorbell push button behaves like a socket with on/off functionality
   Serial.println("Homey.setClass()");
-  Homey.addCapability("onoff", onoffCb); // adding capability _onoff to Trigger Boolean
+  //Homey.addCapability("onoff", onoffCb); // adding capability _onoff to Trigger Boolean
   Serial.println("Homey.addCapability()");
   
   //pinMode(THEBUTTON, INPUT); // declare sensor as input (i.e. the doorbell push button)
   pinMode(THEBUTTON, INPUT_PULLUP);
-  Serial.println("set BUTTON to input mode");
-}
 
-int lastState;
+  debouncer.attach(THEBUTTON,INPUT_PULLUP); // Attach the debouncer to a pin with INPUT_PULLUP mode
+  debouncer.interval(25); // Use a debounce interval of 25 milliseconds
+  
+  digitalWrite(LED_BUILTIN,ledState);
+}
 
 // the loop function runs over and over again forever
 void loop() {
 
   Homey.loop();
   
-  int doorbellState = digitalRead(THEBUTTON);
+  //int doorbellState = digitalRead(THEBUTTON);
 
-  if ( doorbellState == LOW ) {
-    digitalWrite(LED_BUILTIN, LOW);
-  }
-  else {
-    digitalWrite(LED_BUILTIN, HIGH);
-  }
+  debouncer.update(); // Update the Bounce instance
+   
+   if ( debouncer.fell() ) {  // Call code if button transitions from HIGH to LOW
+     ledState = !ledState; // Toggle LED state
+     digitalWrite(LED_BUILTIN,ledState); // Apply new LED state
+   }
 }
 
   //digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
